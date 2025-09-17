@@ -56,6 +56,14 @@ Config load_config(const std::string& filename) {
         value.erase(0, value.find_first_not_of(" \t"));
         value.erase(value.find_last_not_of(" \t") + 1);
         
+        // Remove inline comments (everything after #)
+        size_t comment_pos = value.find('#');
+        if (comment_pos != std::string::npos) {
+            value = value.substr(0, comment_pos);
+            // Trim whitespace again after removing comment
+            value.erase(value.find_last_not_of(" \t") + 1);
+        }
+        
         // Remove quotes if present
         if (value.size() >= 2 && value[0] == '"' && value.back() == '"') {
             value = value.substr(1, value.size() - 2);
@@ -98,36 +106,17 @@ int main(int argc, char* argv[]) {
     
     // Require at least one argument (video device)
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " /dev/videoX [print] [posix] [logfile]\n";
+        std::cerr << "Usage: " << argv[0] << " /dev/videoX\n";
         std::cerr << "  /dev/videoX : Video device (required)\n";
-        std::cerr << "  print       : Enable timestamp printing (optional)\n";
-        std::cerr << "  posix       : Use POSIX epoch timestamp (optional)\n";
-        std::cerr << "  logfile     : Log filename for file output (optional)\n";
-        std::cerr << "\nAlternatively, configure settings in config.yaml\n";
+        std::cerr << "\nAll other settings are configured in config.yaml\n";
         return 1;
     }
 
-    // Select video device
+    // Select video device from command line argument
     const char* dev_name = argv[1];
 
-    // Parse command line arguments and override config
-    std::string log_filename = "";
-    for (int i = 2; i < argc; i++) {
-        std::string arg = argv[i];
-        if (arg == "print") {
-            config.print_to_console = true;
-        } else if (arg == "posix") {
-            config.use_posix_format = true;
-        } else {
-            // If it's not a known flag, treat it as a log filename
-            log_filename = arg;
-            if (log_filename.find(".log") == std::string::npos) {
-                log_filename += ".log";
-            }
-            config.enable_file_logging = true;
-            config.log_filename = log_filename;
-        }
-    }
+    // All other parameters are read from config.yaml only
+    // No command line override
 
     // Set legacy flags for compatibility
     TIMESTAMP_MODE = config.print_to_console;
