@@ -1,0 +1,22 @@
+# Binary executable
+v4l2_test
+
+# Object files
+*.o
+*.obj
+
+# Log files
+*.log
+
+# Temporary files
+*~
+*.tmp
+
+# IDE files
+.vscode/
+*.swp
+*.swo
+
+# Build artifacts
+build/
+dist/

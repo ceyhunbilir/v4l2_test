@@ -18,6 +18,7 @@ struct buffer {
 };
 
 // Flags for timestamp mode and logging
+bool DEBUG_MODE = false;         // If true, print debug information including timestamps
 bool CONVERT_POSIX_TIME = false; // If true, print POSIX epoch timestamp
 bool LOG_TO_FILE = false;        // If true, log to file instead of stdout
 
@@ -33,8 +34,9 @@ std::string get_log_filename(const char* dev_name) {
 int main(int argc, char* argv[]) {
     // Require at least one argument (video device)
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " /dev/videoX [posix] [file]\n";
+        std::cerr << "Usage: " << argv[0] << " /dev/videoX [debug] [posix] [file]\n";
         std::cerr << "  /dev/videoX : Video device (required)\n";
+        std::cerr << "  debug       : Enable debug mode with timestamp printing (optional)\n";
         std::cerr << "  posix       : Print POSIX epoch timestamp (optional)\n";
         std::cerr << "  file        : Log output to timestamps.log (optional)\n";
         return 1;
@@ -42,6 +44,14 @@ int main(int argc, char* argv[]) {
 
     // Select video device (default: /dev/video0)
     const char* dev_name = argv[1];
+
+    // Check for debug flag in arguments
+    for (int i = 2; i < argc; i++) {
+        if (std::string(argv[i]) == "debug") {
+            DEBUG_MODE = true;
+            break;
+        }
+    }
 
     // Open video device
     int fd = open(dev_name, O_RDWR);
@@ -156,11 +166,11 @@ int main(int argc, char* argv[]) {
         }
 
         // Log every frame's timestamp and current FPS to file if enabled,
-        // otherwise print to terminal
+        // otherwise print to terminal only if debug mode is enabled
         if (LOG_TO_FILE && logfile) {
             fprintf(logfile, "Frame timestamp: %.6f | FPS: %.2f\n", ts, fps);
             fflush(logfile);
-        } else {
+        } else if (DEBUG_MODE) {
             printf("Frame timestamp: %.6f | FPS: %.2f\n", ts, fps);
         }
 
