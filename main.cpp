@@ -8,6 +8,8 @@
 #include <sys/mman.h>
 #include <cstring>
 #include <chrono>
+#include <fstream>
+#include <map>
 
 #define CLEAR(x) memset(&(x), 0, sizeof(x))
 
@@ -17,7 +19,66 @@ struct buffer {
     size_t length;
 };
 
-// Flags for timestamp mode and logging
+// Configuration structure
+struct Config {
+    bool print_to_console = false;
+    bool use_posix_format = false;
+    bool enable_file_logging = false;
+    std::string log_filename = "";
+    bool show_fps = true;
+};
+
+// Simple YAML parser for basic key-value pairs
+Config load_config(const std::string& filename) {
+    Config config;
+    std::ifstream file(filename);
+    std::string line;
+    
+    if (!file.is_open()) {
+        std::cerr << "Warning: Could not open config file " << filename << ", using defaults\n";
+        return config;
+    }
+    
+    while (std::getline(file, line)) {
+        // Skip comments and empty lines
+        if (line.empty() || line[0] == '#') continue;
+        
+        // Simple parsing for "key: value" format
+        size_t colon_pos = line.find(':');
+        if (colon_pos == std::string::npos) continue;
+        
+        std::string key = line.substr(0, colon_pos);
+        std::string value = line.substr(colon_pos + 1);
+        
+        // Trim whitespace
+        key.erase(0, key.find_first_not_of(" \t"));
+        key.erase(key.find_last_not_of(" \t") + 1);
+        value.erase(0, value.find_first_not_of(" \t"));
+        value.erase(value.find_last_not_of(" \t") + 1);
+        
+        // Remove quotes if present
+        if (value.size() >= 2 && value[0] == '"' && value.back() == '"') {
+            value = value.substr(1, value.size() - 2);
+        }
+        
+        // Set config values
+        if (key == "print_to_console") {
+            config.print_to_console = (value == "true");
+        } else if (key == "use_posix_format") {
+            config.use_posix_format = (value == "true");
+        } else if (key == "enable_file_logging") {
+            config.enable_file_logging = (value == "true");
+        } else if (key == "log_filename") {
+            config.log_filename = value;
+        } else if (key == "show_fps") {
+            config.show_fps = (value == "true");
+        }
+    }
+    
+    return config;
+}
+
+// Flags for timestamp mode and logging (kept for compatibility)
 bool TIMESTAMP_MODE = false;     // If true, print timestamps
 bool CONVERT_POSIX_TIME = false; // If true, print POSIX epoch timestamp
 bool LOG_TO_FILE = false;        // If true, log to file instead of stdout
@@ -32,26 +93,46 @@ std::string get_log_filename(const char* dev_name) {
 }
 
 int main(int argc, char* argv[]) {
+    // Load configuration from config.yaml
+    Config config = load_config("config.yaml");
+    
     // Require at least one argument (video device)
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " /dev/videoX [print] [posix] [file]\n";
+        std::cerr << "Usage: " << argv[0] << " /dev/videoX [print] [posix] [logfile]\n";
         std::cerr << "  /dev/videoX : Video device (required)\n";
         std::cerr << "  print       : Enable timestamp printing (optional)\n";
-        std::cerr << "  posix       : Print POSIX epoch timestamp (optional)\n";
-        std::cerr << "  file        : Log output to timestamps.log (optional)\n";
+        std::cerr << "  posix       : Use POSIX epoch timestamp (optional)\n";
+        std::cerr << "  logfile     : Log filename for file output (optional)\n";
+        std::cerr << "\nAlternatively, configure settings in config.yaml\n";
         return 1;
     }
 
-    // Select video device (default: /dev/video0)
+    // Select video device
     const char* dev_name = argv[1];
 
-    // Check for print flag in arguments
+    // Parse command line arguments and override config
+    std::string log_filename = "";
     for (int i = 2; i < argc; i++) {
-        if (std::string(argv[i]) == "print") {
-            TIMESTAMP_MODE = true;
-            break;
+        std::string arg = argv[i];
+        if (arg == "print") {
+            config.print_to_console = true;
+        } else if (arg == "posix") {
+            config.use_posix_format = true;
+        } else {
+            // If it's not a known flag, treat it as a log filename
+            log_filename = arg;
+            if (log_filename.find(".log") == std::string::npos) {
+                log_filename += ".log";
+            }
+            config.enable_file_logging = true;
+            config.log_filename = log_filename;
         }
     }
+
+    // Set legacy flags for compatibility
+    TIMESTAMP_MODE = config.print_to_console;
+    CONVERT_POSIX_TIME = config.use_posix_format;
+    LOG_TO_FILE = config.enable_file_logging && !config.log_filename.empty();
 
     // Open video device
     int fd = open(dev_name, O_RDWR);
@@ -110,27 +191,15 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
-    // Set flags from command line arguments
-    // Usage: ./v4l2_npl54_test /dev/video0 posix [logfilename]
-    if (argc > 2 && std::string(argv[2]) == "posix") {
-        CONVERT_POSIX_TIME = true;
-    }
-
-    // Open log file if requested (third arg is filename)
+    // Open log file if enabled in config
     FILE* logfile = nullptr;
-    if (argc > 3) {
-        LOG_TO_FILE = true;
-        std::string logname = argv[3];
-        // Ensure .log extension
-        if (logname.size() < 4 || logname.substr(logname.size() - 4) != ".log") {
-            logname += ".log";
-        }
-        logfile = fopen(logname.c_str(), "w");
+    if (LOG_TO_FILE && !config.log_filename.empty()) {
+        logfile = fopen(config.log_filename.c_str(), "w");
         if (!logfile) {
             perror("Log file");
             return 1;
         }
-        std::cout << "Logging to " << logname << std::endl;
+        std::cout << "Logging to " << config.log_filename << std::endl;
     }
 
     std::cout << "Capturing frames. Press Ctrl+C to stop.\n";

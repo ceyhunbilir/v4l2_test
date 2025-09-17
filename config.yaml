@@ -1,0 +1,15 @@
+# V4L2 Test Configuration
+
+# Timestamp settings
+timestamp:
+  print_to_console: false      # Enable/disable timestamp printing to console
+  use_posix_format: false      # Use POSIX epoch time instead of CLOCK_MONOTONIC
+  
+# Logging settings
+logging:
+  enable_file_logging: false   # Enable/disable logging to file
+  log_filename: ""             # Log filename (empty = no logging)
+  
+# Display settings
+display:
+  show_fps: true               # Show FPS in output
