@@ -15,7 +15,8 @@ make
 ```
 
 - `/dev/videoX` : Video device (required)
-- `posix`       : Print POSIX epoch timestamp (optional)
+- `print`       : Timestamp print if added (optional). If not added, the timestamp will not print in terminal
+- `posix`       : Print POSIX epoch timestamp (optional). If not added, the timestamp captured according to CLOCK_MONOTONIC time. 
 - `logfilename` : Log output to file (optional)
 
 **Examples:**

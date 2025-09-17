@@ -34,9 +34,9 @@ std::string get_log_filename(const char* dev_name) {
 int main(int argc, char* argv[]) {
     // Require at least one argument (video device)
     if (argc < 2) {
-        std::cerr << "Usage: " << argv[0] << " /dev/videoX [timestamp] [posix] [file]\n";
+        std::cerr << "Usage: " << argv[0] << " /dev/videoX [print] [posix] [file]\n";
         std::cerr << "  /dev/videoX : Video device (required)\n";
-        std::cerr << "  timestamp   : Enable timestamp printing (optional)\n";
+        std::cerr << "  print       : Enable timestamp printing (optional)\n";
         std::cerr << "  posix       : Print POSIX epoch timestamp (optional)\n";
         std::cerr << "  file        : Log output to timestamps.log (optional)\n";
         return 1;
@@ -45,9 +45,9 @@ int main(int argc, char* argv[]) {
     // Select video device (default: /dev/video0)
     const char* dev_name = argv[1];
 
-    // Check for timestamp flag in arguments
+    // Check for print flag in arguments
     for (int i = 2; i < argc; i++) {
-        if (std::string(argv[i]) == "timestamp") {
+        if (std::string(argv[i]) == "print") {
             TIMESTAMP_MODE = true;
             break;
         }
