@@ -50,6 +50,19 @@ int main(int argc, char* argv[]) {
         return 1;
     }
 
+
+    // Request buffer(s) from the device
+    struct v4l2_requestbuffers req;
+    CLEAR(req);
+    req.count = 1;
+    req.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    req.memory = V4L2_MEMORY_MMAP;
+    if (ioctl(fd, VIDIOC_REQBUFS, &req) < 0) {
+        perror("Requesting Buffer");
+        close(fd);
+        return 1;
+    }
+
     // Prepare V4L2 buffer
     v4l2_buffer buf;
     CLEAR(buf);
