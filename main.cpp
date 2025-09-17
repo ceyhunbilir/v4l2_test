@@ -129,6 +129,30 @@ int main(int argc, char* argv[]) {
         perror("Cannot open video device");
         return 1;
     }
+    
+    // Check device capabilities
+    struct v4l2_capability cap;
+    if (ioctl(fd, VIDIOC_QUERYCAP, &cap) < 0) {
+        perror("Query device capabilities");
+        close(fd);
+        return 1;
+    }
+    
+    std::cout << "Device: " << dev_name << std::endl;
+    std::cout << "Driver: " << cap.driver << std::endl;
+    std::cout << "Card: " << cap.card << std::endl;
+    
+    // Check current format
+    struct v4l2_format fmt;
+    CLEAR(fmt);
+    fmt.type = V4L2_BUF_TYPE_VIDEO_CAPTURE;
+    if (ioctl(fd, VIDIOC_G_FMT, &fmt) < 0) {
+        perror("Get format");
+        close(fd);
+        return 1;
+    }
+    
+    std::cout << "Format: " << fmt.fmt.pix.width << "x" << fmt.fmt.pix.height << std::endl;
 
 
     // Request buffer(s) from the device
@@ -211,6 +235,14 @@ int main(int argc, char* argv[]) {
             ts = std::chrono::duration<double>(now.time_since_epoch()).count();
         } else {
             ts = buf.timestamp.tv_sec + buf.timestamp.tv_usec / 1e6;
+            
+            // Debug: Check if V4L2 timestamp is valid
+            if (buf.timestamp.tv_sec == 0 && buf.timestamp.tv_usec == 0) {
+                std::cerr << "Warning: V4L2 timestamp is zero. Driver may not support timestamping." << std::endl;
+                std::cerr << "Using system time instead..." << std::endl;
+                auto now = std::chrono::steady_clock::now();
+                ts = std::chrono::duration<double>(now.time_since_epoch()).count();
+            }
         }
 
         // FPS calculation (updated every frame)

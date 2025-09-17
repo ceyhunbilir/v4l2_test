@@ -1,6 +1,6 @@
 # V4L2 Test Configuration
 
-print_to_console: false          # Enable/disable timestamp printing to console
+print_to_console: true          # Enable/disable timestamp printing to console
 use_posix_format: false         # Use POSIX epoch time instead of CLOCK_MONOTONIC
 enable_file_logging: false      # Enable/disable logging to file
 log_filename: ""                # Log filename (empty = no logging)
